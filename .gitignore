@@ -1,0 +1,102 @@
+# =========================
+
+# Python
+
+# =========================
+
+**pycache**/
+*.pyc
+*.pyo
+*.pyd
+*.pyc.*
+*.log
+*.sqlite3
+*.db
+*.db-journal
+
+# Virtual environment
+
+venv/
+.env/
+.venv/
+
+# =========================
+
+# System / OS files
+
+# =========================
+
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# =========================
+
+# IDE / Editor
+
+# =========================
+
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+
+# Build / Packaging
+
+# =========================
+
+build/
+dist/
+*.spec
+
+# =========================
+
+# Project Data (DO NOT PUSH)
+
+# =========================
+
+data/index.db
+data/vectors/
+data/cache/
+memory/logs.db
+
+# =========================
+
+# AI / Models (VERY LARGE)
+
+# =========================
+
+models_storage/
+*.bin
+*.pt
+*.onnx
+*.gguf
+
+# Ollama local models (never push)
+
+.ollama/
+
+# =========================
+
+# Temporary / Runtime
+
+# =========================
+
+tmp/
+temp/
+*.tmp
+
+# =========================
+
+# User sandbox files (optional)
+
+# Remove this line if you WANT sample files in repo
+
+# =========================
+
+UserData/
+Workspace/
+
+test.py
