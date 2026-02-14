@@ -22,7 +22,8 @@ def init_db():
         file_type TEXT,
         size_bytes INTEGER,
         created_time REAL,
-        modified_time REAL
+        modified_time REAL,
+        content TEXT
     )
     """)
 
@@ -38,15 +39,16 @@ def upsert_file(meta: dict):
     cur = conn.cursor()
 
     cur.execute("""
-    INSERT INTO files (path, name, extension, file_type, size_bytes, created_time, modified_time)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO files (path, name, extension, file_type, size_bytes, created_time, modified_time, content)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(path) DO UPDATE SET
         name=excluded.name,
         extension=excluded.extension,
         file_type=excluded.file_type,
         size_bytes=excluded.size_bytes,
         created_time=excluded.created_time,
-        modified_time=excluded.modified_time
+        modified_time=excluded.modified_time,
+        content=excluded.content
     """, (
         meta["path"],
         meta["name"],
@@ -54,7 +56,8 @@ def upsert_file(meta: dict):
         meta["file_type"],
         meta["size_bytes"],
         meta["created_time"],
-        meta["modified_time"]
+        meta["modified_time"],
+        meta.get("content", "")
     ))
 
     conn.commit()
