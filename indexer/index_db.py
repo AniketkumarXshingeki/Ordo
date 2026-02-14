@@ -1,5 +1,6 @@
 import sqlite3
 from pathlib import Path
+import pickle
 
 DB_PATH = "data/index.db"
 
@@ -23,7 +24,8 @@ def init_db():
         size_bytes INTEGER,
         created_time REAL,
         modified_time REAL,
-        content TEXT
+        content TEXT,
+        embedding BLOB
     )
     """)
 
@@ -38,9 +40,13 @@ def upsert_file(meta: dict):
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
 
+    embedding_blob = None
+    if meta.get("embedding") is not None:
+        embedding_blob = pickle.dumps(meta["embedding"])
+
     cur.execute("""
-    INSERT INTO files (path, name, extension, file_type, size_bytes, created_time, modified_time, content)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO files (path, name, extension, file_type, size_bytes, created_time, modified_time, content, embedding)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(path) DO UPDATE SET
         name=excluded.name,
         extension=excluded.extension,
@@ -48,7 +54,8 @@ def upsert_file(meta: dict):
         size_bytes=excluded.size_bytes,
         created_time=excluded.created_time,
         modified_time=excluded.modified_time,
-        content=excluded.content
+        content=excluded.content,
+        embedding=excluded.embedding
     """, (
         meta["path"],
         meta["name"],
@@ -57,7 +64,8 @@ def upsert_file(meta: dict):
         meta["size_bytes"],
         meta["created_time"],
         meta["modified_time"],
-        meta.get("content", "")
+        meta.get("content", ""),
+        embedding_blob
     ))
 
     conn.commit()
