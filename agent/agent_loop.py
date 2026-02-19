@@ -1,5 +1,5 @@
 from agent.intent_parser import parse_intent
-from tools.semantic_search import semantic_search
+from tools.hybrid_search import hybrid_search
 from tools.file_tools import move_file, rename_file, delete_file, create_folder
 from tools.organize_tools import organize_by_type
 
@@ -9,7 +9,7 @@ def handle_action(intent):
 
     if action == "search":
         query = intent.get("query", "")
-        results = semantic_search(query)
+        results = hybrid_search(query)
 
         print("\nTop matches:\n")
         for score, name, path in results:
