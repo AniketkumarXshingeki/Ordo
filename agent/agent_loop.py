@@ -2,14 +2,26 @@ from agent.intent_parser import parse_intent
 from tools.hybrid_search import hybrid_search
 from tools.file_tools import move_file, rename_file, delete_file, create_folder
 from tools.organize_tools import organize_by_type
+from agent.planner import validate_intent, resolve_move_intent
 
 
 def handle_action(intent):
+    valid, error = validate_intent(intent)
+
+    if not valid:
+        print("Invalid command:", error)
+        return
+
     action = intent.get("action")
 
+    # ---------------- SEARCH ----------------
     if action == "search":
-        query = intent.get("query", "")
+        query = intent.get("query")
         results = hybrid_search(query)
+
+        if not results:
+            print("No matching files found.")
+            return
 
         print("\nTop matches:\n")
         for score, name, path in results:
@@ -17,12 +29,24 @@ def handle_action(intent):
             print(path)
             print("-" * 40)
 
-    elif action == "organize":
-        target = "E:/Projects/Ordo/Workspace"
-        organize_by_type(target)
-
+    # ---------------- MOVE (SMART) ----------------
     elif action == "move":
-        move_file(intent.get("source"), intent.get("destination"))
+        src = intent.get("source")
+        dest = intent.get("destination")
+
+        # If source missing → resolve using reasoning
+        if not src:
+            src, dest = resolve_move_intent(intent)
+
+            if not src:
+                print("Could not confidently identify file to move.")
+                return
+
+        move_file(src, dest)
+
+    # ---------------- OTHER ACTIONS ----------------
+    elif action == "organize":
+        organize_by_type("E:/Projects/Ordo/Workspace")
 
     elif action == "rename":
         rename_file(intent.get("source"), intent.get("new_name"))
@@ -34,9 +58,7 @@ def handle_action(intent):
         create_folder(intent.get("destination"))
 
     else:
-        print("Could not understand command.")
-
-
+        print("Unknown command.")
 def run_agent():
     print("\nAI File Manager Ready (type 'exit' to quit)\n")
 

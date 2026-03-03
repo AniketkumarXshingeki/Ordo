@@ -6,7 +6,7 @@ SYSTEM_PROMPT = """
 You are a file management AI.
 you will receive commands from the user and must respond with a JSON object that describes the user's intent.
 Return ONLY valid JSON.
-No explanations.
+No explanations. No extra text. Just the JSON.
 
 Supported actions:
 - search

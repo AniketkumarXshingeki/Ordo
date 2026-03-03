@@ -3,6 +3,7 @@ import pickle
 import numpy as np
 import re
 from indexer.embedder import create_embedding
+from indexer.vector_index import search_index
 
 DB_PATH = "data/index.db"
 
@@ -59,38 +60,33 @@ def hybrid_search(query, top_k=5):
     query_words = re.findall(r"\w+", query.lower())
     preferred_type = detect_type_boost(query)
 
+    # ---- FAISS candidate retrieval ----
+    candidates = search_index(query_vec, top_k=50)
+    if not candidates:
+        return []
+
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
 
-    cur.execute("""
-    SELECT name, path, file_type, content, embedding
-    FROM files
-    """)
-
-    rows = cur.fetchall()
-    conn.close()
-
     results = []
 
-    for name, path, file_type, content, emb_blob in rows:
-        if emb_blob is None:
+    for faiss_score, rowid in candidates:
+        cur.execute("""
+        SELECT name, path, file_type, content, embedding
+        FROM files WHERE rowid=?
+        """, (rowid,))
+        row = cur.fetchone()
+        if not row:
             continue
 
+        name, path, file_type, content, emb_blob = row
         file_vec = pickle.loads(emb_blob)
 
-        # --- Semantic similarity ---
         sem_score = cosine_similarity(query_vec, file_vec)
-
-        # --- Keyword match ---
         key_score = keyword_score(query_words, name + " " + (content or ""))
-
-        # --- Filename boost ---
         filename_boost = 0.15 if any(w in name.lower() for w in query_words) else 0.0
-
-        # --- File type boost ---
         type_boost = 0.1 if preferred_type and file_type == preferred_type else 0.0
 
-        # --- Final hybrid score ---
         final_score = (
             sem_score * 0.7 +
             key_score * 0.3 +
@@ -99,6 +95,8 @@ def hybrid_search(query, top_k=5):
         )
 
         results.append((final_score, name, path))
+
+    conn.close()
 
     results.sort(reverse=True)
     return results[:top_k]
