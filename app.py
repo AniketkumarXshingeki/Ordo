@@ -45,7 +45,7 @@ while True:
         print("Listing files with details (size, date)...")
 
     elif command[0] == "create" and len(command) == 2:
-        print("file is created successfully.")
+        print("file is created successfully."+command[1])
 
     elif command[0] == "rename" and len(command) == 3:
        print("file is renamed successfully.")
