@@ -101,6 +101,6 @@ Workspace/
 
 test.py
 
-test/
+tests
 data/
 Ordo_report.txt

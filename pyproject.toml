@@ -1,0 +1,20 @@
+[project]
+name = "ordo"
+version = "0.1.0"
+description = "An Offline AI powered file manager"
+authors = [
+    {name = "AniketkumarXShingeki",email = "aniketkumar89012@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "typer[all] (>=0.24.1,<0.25.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+ordo = "ordo.app:main"
