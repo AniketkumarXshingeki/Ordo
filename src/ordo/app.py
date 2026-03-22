@@ -2,6 +2,7 @@ from typing import Optional
 
 import typer
 
+from ordo.agent.agent_loop import run_agent
 from ordo.indexer import content_pipeline
 
 # This creates your main CLI app
@@ -27,6 +28,17 @@ def organize(folder: str = typer.Argument(..., help="The target folder to clean 
     Use AI to sort files into categorized folders.
     """
     print(f"📂 Preparing to organize files in '{folder}'...")
+
+
+@app.command()
+def run():
+    """
+    Start the interactive AI File Manager terminal.
+    """
+    print("🤖 Booting up Ordo Agent Environment...")
+    
+    # This triggers your 'while True' loop from core.py!
+    run_agent()
 
 def main():
     # This is what Poetry triggers when you type 'ordo'
