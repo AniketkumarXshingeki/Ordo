@@ -117,3 +117,37 @@ def fetch_all_files():
     rows = cur.fetchall()
     conn.close()
     return rows
+
+def get_unembedded_files():
+    """
+    Finds all files in the database that don't have an AI embedding yet.
+    Returns a list of dictionaries with the file's ID, name, path, and type.
+    """
+    conn = sqlite3.connect(str(DB_PATH))
+    conn.row_factory = sqlite3.Row  # This lets us access columns by name (like a dictionary)
+    cur = conn.cursor()
+    
+    # Grab only the files missing their embeddings
+    cur.execute("SELECT rowid as id, name, path, file_type FROM files WHERE embedding IS NULL")
+    rows = cur.fetchall()
+    conn.close()
+    
+    return [dict(row) for row in rows]
+
+def update_file_embedding(file_id, content, embedding_vector):
+    """
+    Saves the extracted text and the FAISS-ready math back to the file's row.
+    """
+    conn = sqlite3.connect(str(DB_PATH))
+    cur = conn.cursor()
+    
+    # Convert your array of numbers into a binary blob so SQLite can store it safely
+    emb_blob = pickle.dumps(embedding_vector)
+    
+    cur.execute(
+        "UPDATE files SET content = ?, embedding = ? WHERE rowid = ?",
+        (content, emb_blob, file_id)
+    )
+    
+    conn.commit()
+    conn.close()

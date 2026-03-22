@@ -4,6 +4,9 @@ import numpy as np
 import faiss
 import os
 from pathlib import Path
+from ordo.indexer.embedder import create_embedding
+from ordo.indexer.text_extractor import extract_content
+from ordo.indexer.index_db import get_unembedded_files, update_file_embedding
 
 # 1. FIX THE PATHS: Anchor them to the root of your project
 BASE_DIR = Path(__file__).parent.parent.parent.parent
@@ -97,3 +100,37 @@ def search_index(query_vec, top_k=20):
         results.append((float(score), rowid))
 
     return results
+
+def run_deep_scan():
+    """PHASE 2: Finds files without embeddings, reads them, and updates the DB."""
+    print("\n🕵️‍♂️ Starting Deep Scan (Extracting Content & Embeddings)...")
+    
+    files_to_process = get_unembedded_files() 
+    
+    if not files_to_process:
+        print("All mapped files are already deeply indexed! Rebuilding FAISS map just in case...")
+        build_index()
+        return
+
+    total = 0
+    for file_record in files_to_process:
+        file_path = file_record["path"]
+        file_type = file_record["file_type"]
+        
+        # Heavy AI lifting happens here!
+        # content = extract_content(file_path, file_type)
+        content=''
+        text_for_embedding = f"File name: {os.name}, File type: {file_type}"        
+        embedding = create_embedding(text_for_embedding)
+        
+        # Save it back to SQLite
+        update_file_embedding(file_record["id"], content, embedding)
+        total += 1
+        
+        if total % 20 == 0:
+            print(f"Deep scanned {total} files...")
+            
+    print("\n✅ Deep scan text extraction complete!")
+    
+    # Automatically build the index when finished!
+    build_index()

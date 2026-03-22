@@ -1,55 +1,52 @@
-from ordo.indexer.scanner import scan_files
-from ordo.indexer.metadata_extractor import extract_basic_metadata
-from ordo.indexer.text_extractor import extract_content
-from ordo.indexer.index_db import init_db, upsert_file
-from ordo.indexer.embedder import create_embedding
 import json
 from pathlib import Path
 
-# Load settings.json
-with open("config/settings.json", "r") as f:
+from ordo.indexer.scanner import scan_files
+from ordo.indexer.metadata_extractor import extract_basic_metadata
+from ordo.indexer.index_db import init_db, upsert_file
+
+# 1. FIX THE CONFIG PATH: Anchor it to the project root
+BASE_DIR = Path(__file__).parent.parent.parent.parent
+CONFIG_PATH = BASE_DIR / "config" / "settings.json"
+
+with open(CONFIG_PATH, "r") as f:
     settings = json.load(f)
 
-# Convert to Path objects
 ALLOWED_ROOTS = [Path(p).resolve() for p in settings["ALLOWED_ROOTS"]]
 
-
 def run():
+    """PHASE 1: Scans all ALLOWED_ROOTS quickly."""
     print("Initializing DB...")
     init_db()
 
     total = 0
-
     for root in ALLOWED_ROOTS:
-        print(f"\nScanning: {root}")
+        print(f"\n⚡ Fast Scanning: {root}")
 
         for file in scan_files(root):
             meta = extract_basic_metadata(file)
             if not meta:
                 continue
 
-            content = extract_content(file, meta["file_type"])
-            meta["content"] = content
-
-
-
-            text_for_embedding = meta["name"] + " " + (meta["content"] or "")
-            embedding = create_embedding(text_for_embedding)
-            meta["embedding"] = embedding
+            # NO heavy AI math here! Just set to None.
+            meta["content"] = None
+            meta["embedding"] = None
 
             upsert_file(meta)
             total += 1
 
-            if total % 20 == 0:
+            if total % 100 == 0:
                 print(f"Processed {total} files...")
 
-    print(f"\nContent + Embedding indexing complete: {total} files")
+    print(f"\n✅ Fast scan complete: Mapped {total} files.")
 
 
 def scan_with_path(path):
+    """PHASE 1: Scans a specific user-provided path quickly."""
     print("Initializing DB...")
     init_db()
-    print(f"Scanning: {path}")
+    print(f"\n⚡ Fast Scanning: {path}")
+    
     total = 0
 
     for file in scan_files(path):
@@ -57,20 +54,16 @@ def scan_with_path(path):
         if not meta:
             continue
 
-        content = extract_content(file, meta["file_type"])
-        meta["content"] = content
-
-        text_for_embedding = meta["name"] + " " + (meta["content"] or "")
-        embedding = create_embedding(text_for_embedding)
-        meta["embedding"] = embedding
+        meta["content"] = None
+        meta["embedding"] = None
 
         upsert_file(meta)
         total += 1
-        if total % 20 == 0:
+        
+        if total % 10 == 0:
             print(f"Processed {total} files...")
 
-    print(f"Finished scanning {path} with {total} files")
-
+    print(f"✅ Finished fast scanning '{path}' with {total} files mapped.")
 
 if __name__ == "__main__":
     run()

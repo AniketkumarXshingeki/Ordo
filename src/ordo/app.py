@@ -4,6 +4,7 @@ import typer
 
 from ordo.agent.agent_loop import run_agent
 from ordo.indexer import content_pipeline
+from ordo.indexer import vector_index
 
 # This creates your main CLI app
 app = typer.Typer(help="🤖 Ordo: AI-Driven File Manager", add_completion=False)
@@ -15,13 +16,15 @@ def scan(path: Optional[str] = typer.Argument(".", help="Specific Folder to Scan
     Scan a directory to map out your files.
     """
     print(f"🔍 Ordo is booting up... scanning '{path}'")
+    if path:
+        print(f"🔍 Ordo is targeting specific path: '{path}'")
+        content_pipeline.scan_with_path(path)
+    # else:
+    #     print("🌍 No path provided. Scanning all ALLOWED_ROOTS...")
+    #     content_pipeline.run()
     if deep:
-        print("   -> 🕵️‍♂️ Deep scan activated!")
+        vector_index.run_deep_scan()
     
-    # Next step: we will call your indexer here!
-    # indexer.run_scan(path)
-    content_pipeline.scan_with_path(path)
-
 @app.command()
 def organize(folder: str = typer.Argument(..., help="The target folder to clean up")):
     """

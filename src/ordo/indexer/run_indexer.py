@@ -1,8 +1,9 @@
-from config.settings import ALLOWED_ROOTS
 from ordo.indexer.scanner import scan_files
 from ordo.indexer.metadata_extractor import extract_basic_metadata
 from ordo.indexer.index_db import init_db, upsert_file
 
+ALLOWED_ROOTS = [
+    "C:/Users/YourUsername/Documents",]
 
 def run():
     print("Initializing database...")
