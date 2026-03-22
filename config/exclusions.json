@@ -1,4 +1,5 @@
-EXCLUDED_DIR_NAMES = {
+{ 
+    "EXCLUDED_DIR_NAMES": [
     "Windows",
     "Program Files",
     "Program Files (x86)",
@@ -7,4 +8,5 @@ EXCLUDED_DIR_NAMES = {
     "System Volume Information",
     ".git",
     "__pycache__"
+]
 }

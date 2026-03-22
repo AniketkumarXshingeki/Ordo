@@ -1,7 +1,7 @@
 from pathlib import Path
 import shutil
-from indexer.index_db import fetch_all_files
-from safety.path_guard import is_safe_path
+from ordo.indexer.index_db import fetch_all_files
+from ordo.safety.path_guard import is_safe_path
 
 
 def organize_by_type(target_root: str):

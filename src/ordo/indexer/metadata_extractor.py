@@ -1,5 +1,5 @@
 from pathlib import Path
-from indexer.file_types import classify_file_type
+from ordo.indexer.file_types import classify_file_type
 
 
 def extract_basic_metadata(path: Path) -> dict:

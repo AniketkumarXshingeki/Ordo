@@ -1,6 +1,19 @@
 from pathlib import Path
-from config.settings import ALLOWED_ROOTS
-from config.exclusions import EXCLUDED_DIR_NAMES
+import json
+
+
+# Load settings.json
+with open("config/settings.json", "r") as f:
+    settings = json.load(f)
+
+ALLOWED_ROOTS = [Path(p).resolve() for p in settings["ALLOWED_ROOTS"]]
+
+
+# Load exclusions.json
+with open("config/exclusions.json", "r") as f:
+    exclusions = json.load(f)
+
+EXCLUDED_DIR_NAMES = set(exclusions["EXCLUDED_DIR_NAMES"])
 
 
 def is_excluded(path: Path) -> bool:

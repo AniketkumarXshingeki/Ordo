@@ -1,8 +1,8 @@
-from agent.intent_parser import parse_intent
-from tools.hybrid_search import hybrid_search
-from tools.file_tools import move_file, rename_file, delete_file, create_folder
-from tools.organize_tools import organize_by_type
-from agent.planner import validate_intent, resolve_move_intent
+from ordo.agent.intent_parser import parse_intent
+from ordo.tools.hybrid_search import hybrid_search
+from ordo.tools.file_tools import move_file, rename_file, delete_file, create_folder
+from ordo.tools.organize_tools import organize_by_type
+from ordo.agent.planner import validate_intent, resolve_move_intent
 
 
 def handle_action(intent):

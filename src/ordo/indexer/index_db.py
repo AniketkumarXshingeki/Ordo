@@ -15,6 +15,15 @@ def init_db():
     cur = conn.cursor()
 
     cur.execute("""
+    CREATE TABLE IF NOT EXISTS folders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    path TEXT UNIQUE,
+    name TEXT,
+    parent_path TEXT
+)
+""")
+
+    cur.execute("""
     CREATE TABLE IF NOT EXISTS files (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         path TEXT UNIQUE,
@@ -25,13 +34,39 @@ def init_db():
         created_time REAL,
         modified_time REAL,
         content TEXT,
-        embedding BLOB
+        embedding BLOB,
+        folder_id INTEGER,
+        FOREIGN KEY(folder_id) REFERENCES folders(id)
     )
     """)
 
     conn.commit()
     conn.close()
 
+def get_or_create_folder(path: str):
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+
+    folder_path = str(Path(path).parent)
+    folder_name = Path(folder_path).name
+    parent_path = str(Path(folder_path).parent)
+
+    cur.execute("SELECT id FROM folders WHERE path=?", (folder_path,))
+    row = cur.fetchone()
+
+    if row:
+        folder_id = row[0]
+    else:
+        cur.execute("""
+        INSERT INTO folders (path, name, parent_path)
+        VALUES (?, ?, ?)
+        """, (folder_path, folder_name, parent_path))
+
+        folder_id = cur.lastrowid
+        conn.commit()
+
+    conn.close()
+    return folder_id
 
 def upsert_file(meta: dict):
     """
@@ -44,9 +79,11 @@ def upsert_file(meta: dict):
     if meta.get("embedding") is not None:
         embedding_blob = pickle.dumps(meta["embedding"])
 
+    folder_id = get_or_create_folder(meta["path"])
+
     cur.execute("""
-    INSERT INTO files (path, name, extension, file_type, size_bytes, created_time, modified_time, content, embedding)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO files (path, name, extension, file_type, size_bytes, created_time, modified_time, content, embedding, folder_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(path) DO UPDATE SET
         name=excluded.name,
         extension=excluded.extension,
@@ -65,7 +102,8 @@ def upsert_file(meta: dict):
         meta["created_time"],
         meta["modified_time"],
         meta.get("content", ""),
-        embedding_blob
+        embedding_blob,
+        folder_id
     ))
 
     conn.commit()

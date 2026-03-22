@@ -1,7 +1,7 @@
 from config.settings import ALLOWED_ROOTS
-from indexer.scanner import scan_files
-from indexer.metadata_extractor import extract_basic_metadata
-from indexer.index_db import init_db, upsert_file
+from ordo.indexer.scanner import scan_files
+from ordo.indexer.metadata_extractor import extract_basic_metadata
+from ordo.indexer.index_db import init_db, upsert_file
 
 
 def run():

@@ -2,8 +2,8 @@ import sqlite3
 import pickle
 import numpy as np
 import re
-from indexer.embedder import create_embedding
-from indexer.vector_index import search_index
+from ordo.indexer.embedder import create_embedding
+from ordo.indexer.vector_index import search_index
 
 DB_PATH = "data/index.db"
 

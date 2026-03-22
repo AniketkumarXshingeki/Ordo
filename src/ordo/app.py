@@ -1,10 +1,14 @@
+from typing import Optional
+
 import typer
+
+from ordo.indexer import content_pipeline
 
 # This creates your main CLI app
 app = typer.Typer(help="🤖 Ordo: AI-Driven File Manager", add_completion=False)
 
 @app.command()
-def scan(path: str = typer.Argument(".", help="The folder to scan"), 
+def scan(path: Optional[str] = typer.Argument(".", help="Specific Folder to Scan"), 
          deep: bool = typer.Option(False, "--deep", help="Enable deep metadata scanning")):
     """
     Scan a directory to map out your files.
@@ -15,6 +19,7 @@ def scan(path: str = typer.Argument(".", help="The folder to scan"),
     
     # Next step: we will call your indexer here!
     # indexer.run_scan(path)
+    content_pipeline.scan_with_path(path)
 
 @app.command()
 def organize(folder: str = typer.Argument(..., help="The target folder to clean up")):

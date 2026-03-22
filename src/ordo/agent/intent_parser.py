@@ -1,4 +1,4 @@
-from models.llm import ask_llm
+from ordo.models.llm import ask_llm
 import json
 
 

@@ -1,7 +1,7 @@
 import sqlite3
 import pickle
 import numpy as np
-from indexer.embedder import create_embedding
+from ordo.indexer.embedder import create_embedding
 
 DB_PATH = "data/index.db"
 

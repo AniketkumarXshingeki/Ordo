@@ -1,7 +1,7 @@
 from pathlib import Path
 import shutil
-from safety.path_guard import is_safe_path
-from safety.confirmations import confirm_action
+from ordo.safety.path_guard import is_safe_path
+from ordo.safety.confirmations import confirm_action
 
 
 def create_folder(path: str):
