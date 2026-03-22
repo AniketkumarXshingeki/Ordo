@@ -1,5 +1,6 @@
+import time
 from ordo.agent.intent_parser import parse_intent
-from ordo.tools.hybrid_search import hybrid_search
+from ordo.tools.search_file import hybrid_search
 from ordo.tools.file_tools import move_file, rename_file, delete_file, create_folder
 from ordo.tools.organize_tools import organize_by_type
 from ordo.agent.planner import validate_intent, resolve_move_intent
@@ -17,7 +18,15 @@ def handle_action(intent):
     # ---------------- SEARCH ----------------
     if action == "search":
         query = intent.get("query")
-        results = hybrid_search(query)
+        category = intent.get("category")
+        days_ago = intent.get("days_ago")
+        start_ts = None
+        if days_ago is not None:
+            start_ts = time.time() - (int(days_ago) * 24 * 3600)
+        print(f"🔎 Searching for: Query='{query}', Category='{category}', Since='{days_ago} days ago'")
+
+
+        results = hybrid_search(query, category=category, start_ts=start_ts)
 
         if not results:
             print("No matching files found.")

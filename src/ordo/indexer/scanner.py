@@ -8,7 +8,7 @@ ALLOWED_EXTENSIONS = {
     ".jpg", ".jpeg", ".png", ".bmp", ".webp",                         #image
     ".mp3", ".wav", ".flac",                                          #audio
     ".mp4", ".mkv", ".avi", ".mov",                                   #video
-    ".ppt"                                                            #presentation
+    ".ppt", ".pptx"                                                   #presentation
 }
 
 

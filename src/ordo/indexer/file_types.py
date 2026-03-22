@@ -13,7 +13,7 @@ def classify_file_type(extension: str) -> str:
     elif ext in [".mp4", ".mkv", ".avi", ".mov"]:
         return "video"
     
-    elif ext in [".ppt"]:
+    elif ext in [".ppt", ".pptx"]:
         return "presentation"
     else:
         pass
