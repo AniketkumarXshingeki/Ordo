@@ -1,4 +1,8 @@
 
 {
-  "ALLOWED_ROOTS": ["E:/"]
+  "ALLOWED_ROOTS": [
+    "C:/Users/dipak kumar/Desktop",
+    "C:/Users/dipak kumar/Documents",
+    "C:/Users/dipak kumar/Downloads"
+  ]
 }

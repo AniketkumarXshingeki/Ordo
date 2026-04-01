@@ -16,7 +16,7 @@ Supported actions:
 - create_folder
 
 For "search" actions, extract these filters if the user mentions them:
-- category: The type of file requested must be ("document", "image", "audio", "video", "presentation"). It strictly must be one of these values or Leave null if not mentioned or mentioned any other value.
+-- category: The type of file requested must be one of ("document", "image", "audio", "video", "presentation", "code", "archive"). It strictly must be one of these values or Leave null if not mentioned or mentioned any other value.
 - days_ago: An integer representing how far back to look (e.g., "yesterday" = 1, "last week" = 7, "last month" = 30). Leave null if not mentioned.
 
 JSON format:

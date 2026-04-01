@@ -40,14 +40,22 @@ def keyword_score(query_words, text):
 def detect_type_boost(query):
     q = query.lower()
 
-    if "pdf" in q or "document" in q:
+    if "pdf" in q or "document" in q or "text" in q:
         return "document"
     if "song" in q or "audio" in q or "music" in q:
         return "audio"
     if "video" in q or "movie" in q:
         return "video"
-    if "image" in q or "photo" in q:
+    if "image" in q or "photo" in q or "picture" in q:
         return "image"
+    if "code" in q or "script" in q or "python" in q or "javascript" in q:
+        return "code"
+    if "data" in q or "excel" in q or "sheet" in q or "csv" in q:
+        return "data"
+    if "presentation" in q or "powerpoint" in q or "slides" in q:
+        return "presentation"
+    if "zip" in q or "archive" in q or "compressed" in q:
+        return "archive"
 
     return None
 

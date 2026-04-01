@@ -1,18 +1,8 @@
-import json
-from pathlib import Path
-
+from ordo.safety.path_guard import ALLOWED_ROOTS
 from ordo.indexer.scanner import scan_files
 from ordo.indexer.metadata_extractor import extract_basic_metadata
 from ordo.indexer.index_db import init_db, upsert_file
-
-# 1. FIX THE CONFIG PATH: Anchor it to the project root
-BASE_DIR = Path(__file__).parent.parent.parent.parent
-CONFIG_PATH = BASE_DIR / "config" / "settings.json"
-
-with open(CONFIG_PATH, "r") as f:
-    settings = json.load(f)
-
-ALLOWED_ROOTS = [Path(p).resolve() for p in settings["ALLOWED_ROOTS"]]
+from ordo.indexer import vector_index
 
 def run():
     """PHASE 1: Scans all ALLOWED_ROOTS quickly."""
@@ -40,6 +30,10 @@ def run():
 
     print(f"\n✅ Fast scan complete: Mapped {total} files.")
 
+    # Phase 2: Run deep scan to extract content and compute embeddings
+    print("\nStarting deep scan to extract content and create embeddings...")
+    vector_index.run_deep_scan()
+
 
 def scan_with_path(path):
     """PHASE 1: Scans a specific user-provided path quickly."""
@@ -49,7 +43,7 @@ def scan_with_path(path):
     
     total = 0
 
-    for file in scan_files(path):
+    for file in scan_files(path, allow_outside=True):
         meta = extract_basic_metadata(file)
         if not meta:
             continue
@@ -64,6 +58,10 @@ def scan_with_path(path):
             print(f"Processed {total} files...")
 
     print(f"✅ Finished fast scanning '{path}' with {total} files mapped.")
+
+    # Run deep scan for this path specifically
+    print("\nStarting deep scan to extract content and create embeddings for the scanned path...")
+    vector_index.run_deep_scan()
 
 if __name__ == "__main__":
     run()

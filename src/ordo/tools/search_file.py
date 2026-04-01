@@ -9,13 +9,15 @@ from ordo.indexer.vector_index import search_index
 BASE_DIR = Path(__file__).parent.parent.parent.parent
 DB_PATH = BASE_DIR / "data" / "index.db"
 
-# Map human words to file extensions
+# Map human words to categories
 TYPE_MAP = {
-    "document": [".pdf", ".docx", ".txt", ".md", ],
-    "audio": [".mp3", ".wav", ".flac", ".m4a"],
-    "video": [".mp4", ".mkv", ".avi", ".mov"],
-    "image": [".jpg", ".jpeg", ".png", ".bmp", ".webp"],
-    "presentation": [".ppt", ".pptx"]
+    "document": [".pdf", ".docx", ".txt", ".md", ".rtf"],
+    "audio": [".mp3", ".wav", ".flac", ".m4a", ".aac"],
+    "video": [".mp4", ".mkv", ".avi", ".mov", ".wmv"],
+    "image": [".jpg", ".jpeg", ".png", ".bmp", ".webp", ".gif"],
+    "presentation": [".ppt", ".pptx", ".xls", ".xlsx", ".csv", ".json", ".xml"],
+    "code": [".py", ".js", ".html", ".css", ".ts", ".cpp", ".c", ".java"],
+    "archive": [".zip", ".rar", ".7z", ".tar", ".gz"]
 }
 
 def keyword_score(query_words, text):
@@ -75,12 +77,17 @@ def hybrid_search(
     if category:
         category = category.lower()
         if category in TYPE_MAP:
-            exts = TYPE_MAP[category]
-            sql += f" AND file_type IN ({','.join('?' for _ in exts)})"
-            params.extend(exts)
-        else:
+            # If it's a category name, filter by the file_type column
             sql += " AND file_type = ?"
             params.append(category)
+        elif category.startswith("."):
+            # If it's an extension, filter by the extension column
+            sql += " AND extension = ?"
+            params.append(category)
+        else:
+            # Fallback: check both
+            sql += " AND (file_type = ? OR extension = ?)"
+            params.extend([category, "." + category if not category.startswith(".") else category])
 
     # Filter by Time (Using your start/end timestamp logic)
     if start_ts is not None:
