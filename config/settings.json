@@ -1,14 +1,7 @@
 
 {
-<<<<<<< HEAD
-  "ALLOWED_ROOTS": [
-    "C:/Users/dipak kumar/Desktop",
-    "C:/Users/dipak kumar/Documents",
-    "C:/Users/dipak kumar/Downloads"
-  ]
-=======
+
   "ALLOWED_ROOTS": ["C:/Users/gjha5/OneDrive/Desktop",
                     "C:/Users/gjha5/OneDrive/Documents",
-                    "C:/Users/gjha5/OneDrive/Downloads"]    
->>>>>>> b5773a1 (update search)
+                    "C:/Users/gjha5/OneDrive/Downloads"]
 }
