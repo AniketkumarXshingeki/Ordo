@@ -6,3 +6,4 @@ if __name__ == '__main__':
         print('Usage: python scripts/scan_path.py <path>')
     else:
         scan_with_path(sys.argv[1])
+

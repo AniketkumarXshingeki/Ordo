@@ -69,9 +69,9 @@ def filter_by_range(start_date, end_date):
     start_date, end_date format: 'YYYY-MM-DD'
     """
     start_dt = datetime.strptime(start_date, "%Y-%m-%d")
-    end_dt   = datetime.strptime(end_date, "%Y-%m-%d")
+    end_dt = datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59)  # Include the full end date
 
     start_ts = start_dt.timestamp()
-    end_ts   = end_dt.timestamp()
+    end_ts = end_dt.timestamp()
 
     return _run_query(start_ts, end_ts)

@@ -26,6 +26,12 @@ def scan_files(root, allow_outside: bool = False):
     if not root.exists():
         return
 
+    if root.is_file():
+        if allow_outside or is_safe_path(root):
+            if root.suffix.lower() in ALLOWED_EXTENSIONS:
+                yield root
+        return
+
     for path in root.rglob("*"):
         try:
             if not path.is_file():

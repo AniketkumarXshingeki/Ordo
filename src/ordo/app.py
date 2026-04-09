@@ -5,7 +5,7 @@ import typer
 from ordo.agent.agent_loop import run_agent
 from ordo.indexer import content_pipeline
 from ordo.indexer import vector_index
-
+from ordo.tools.time_search import *
 # This creates your main CLI app
 app = typer.Typer(help="🤖 Ordo: AI-Driven File Manager", add_completion=False)
 
@@ -32,7 +32,50 @@ def organize(folder: str = typer.Argument(..., help="The target folder to clean 
     """
     print(f"📂 Preparing to organize files in '{folder}'...")
 
+# Add this new command for time-based searching
+@app.command()
+def search(
+    day: Optional[int] = typer.Option(None, help="Day of the month (1-31)"),
+    month: Optional[int] = typer.Option(None, help="Month (1-12)"),
+    year: Optional[int] = typer.Option(None, help="Year (e.g., 2024)"),  # Now optional
+    start_date: Optional[str] = typer.Option(None, help="Start date for range search (YYYY-MM-DD)"),
+    end_date: Optional[str] = typer.Option(None, help="End date for range search (YYYY-MM-DD)"),
+):
+    """
+    Search for files by creation time: day, month, year, or date range.
+    Provide either specific day/month/year or a start/end date range.
+    """
+    if start_date and end_date:
+        try:
+            start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+            end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+            if start_dt > end_dt:
+                typer.echo("❌ Start date must be before or equal to end date.")
+                return
+            results = filter_by_range(start_date, end_date)
+        except ValueError:
+            typer.echo("❌ Invalid date format. Use YYYY-MM-DD.")
+            return
+    elif day and month and year:
+        # Day search
+        results = filter_by_day(day, month, year)
+    elif month and year:
+        # Month search
+        results = filter_by_month(month, year)
+    elif year:
+        # Year search
+        results = filter_by_year(year)
+    else:
+        typer.echo("❌ Please provide valid search criteria: --year, --month --year, --day --month --year, or --start-date --end-date.")
+        return
 
+    if not results:
+        typer.echo("🔍 No files found for the given criteria.")
+        return
+
+    typer.echo(f"🔍 Found {len(results)} file(s):")
+    for name, path, dt in results:
+        typer.echo(f"  - {name} | {path} | Created: {dt.strftime('%Y-%m-%d %H:%M:%S')}")
 @app.command()
 def run():
     """
