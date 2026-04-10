@@ -6,6 +6,7 @@ from ordo.agent.agent_loop import run_agent
 from ordo.indexer import content_pipeline
 from ordo.indexer import vector_index
 from ordo.tools.time_search import *
+from ordo.tools.organize_tools import organize_by_type
 # This creates your main CLI app
 app = typer.Typer(help="🤖 Ordo: AI-Driven File Manager", add_completion=False)
 
@@ -31,6 +32,7 @@ def organize(folder: str = typer.Argument(..., help="The target folder to clean 
     Use AI to sort files into categorized folders.
     """
     print(f"📂 Preparing to organize files in '{folder}'...")
+    organize_by_type(folder)
 
 # Add this new command for time-based searching
 @app.command()
@@ -76,6 +78,59 @@ def search(
     typer.echo(f"🔍 Found {len(results)} file(s):")
     for name, path, dt in results:
         typer.echo(f"  - {name} | {path} | Created: {dt.strftime('%Y-%m-%d %H:%M:%S')}")
+# Add this import at the top with other imports
+from ordo.tools.file_tools import create_folder, move_file, rename_file, delete_file
+
+# Add these new commands to your app
+
+@app.command()
+def create(folder: str = typer.Argument(..., help="Path for the new folder")):
+    """
+    Create a new folder with all parent directories.
+    """
+    if create_folder(folder):
+        typer.echo(f"✅ Folder created: {folder}")
+    else:
+        typer.echo(f"❌ Failed to create folder")
+
+@app.command()
+def move(
+    source: str = typer.Argument(..., help="Source file path"),
+    destination: str = typer.Argument(..., help="Destination file path")
+):
+    """
+    Move a file from source to destination.
+    """
+    if move_file(source, destination):
+        typer.echo(f"✅ File moved successfully")
+    else:
+        typer.echo(f"❌ Failed to move file")
+
+@app.command()
+def rename(
+    filepath: str = typer.Argument(..., help="File path to rename"),
+    new_name: str = typer.Argument(..., help="New filename")
+):
+    """
+    Rename a file.
+    """
+    if rename_file(filepath, new_name):
+        typer.echo(f"✅ File renamed successfully")
+    else:
+        typer.echo(f"❌ Failed to rename file")
+
+@app.command()
+def delete(
+    filepath: str = typer.Argument(..., help="File path to delete"),
+    force: bool = typer.Option(False, "--force", help="Skip confirmation")
+):
+    """
+    Delete a file (requires confirmation).
+    """
+    if delete_file(filepath):
+        typer.echo(f"✅ File deleted successfully")
+    else:
+        typer.echo(f"❌ Failed to delete file")
 @app.command()
 def run():
     """
