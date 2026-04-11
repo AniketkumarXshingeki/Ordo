@@ -1,5 +1,6 @@
 import sqlite3
 import re
+import difflib
 from datetime import datetime
 from pathlib import Path
 
@@ -20,13 +21,27 @@ TYPE_MAP = {
     "archive": [".zip", ".rar", ".7z", ".tar", ".gz"]
 }
 
+STOP_WORDS = {"the", "is", "at", "which", "on", "in", "a", "an", "and", "of", "to"}
+
 def keyword_score(query_words, text):
-    """Calculates how many exact query words appear in the text."""
+    """Calculates keyword match score using prefix matching (stemming) and fuzzy matching (typos)."""
     if not text or not query_words:
         return 0.0
-    text = text.lower()
-    matches = sum(1 for w in query_words if w in text)
-    return matches / max(len(query_words), 1)
+        
+    text_words = set(re.findall(r"\w+", text.lower()))
+    
+    matches = 0
+    filtered_qw = [w for w in query_words if w not in STOP_WORDS]
+    
+    for w in filtered_qw:
+        # Check prefix matching (stemming) or exact match
+        if any(t.startswith(w) for t in text_words):
+            matches += 1
+        # Check fuzzy matching for spelling mistakes
+        elif difflib.get_close_matches(w, text_words, n=1, cutoff=0.8):
+            matches += 1
+            
+    return matches / max(len(filtered_qw), 1)
 
 def hybrid_search(
     query: str = None, 
@@ -105,26 +120,56 @@ def hybrid_search(
     # 3. SCORING & SORTING (Your custom formula!)
     # ==========================================
     results = []
+    
+    filtered_query_words = [w for w in query_words if w not in STOP_WORDS]
+    
     for row in rows:
         name = row["name"]
         content = row["content"] or ""
         
         # If there's no query, just sort by newest files
         if not query:
-            results.append((row["created_time"], name, row["path"]))
+            results.append({
+                "score": 1.0,  # default score
+                "name": name,
+                "path": row["path"],
+                "created_time": row["created_time"],
+                "file_type": row["file_type"]
+            })
             continue
 
         # Use your awesome hybrid formula!
         sem_score = faiss_scores.get(row["id"], 0.0)
         key_score = keyword_score(query_words, name + " " + content)
-        filename_boost = 0.15 if any(w in name.lower() for w in query_words) else 0.0
+        
+        # Boost if word is in filename (exact or typo prefix)
+        name_words = set(re.findall(r"\w+", name.lower()))
+        filename_boost = 0.0
+        for w in filtered_query_words:
+            if any(t.startswith(w) for t in name_words) or difflib.get_close_matches(w, name_words, n=1, cutoff=0.8):
+                filename_boost = 0.15
+                break
+                
+        # Exact Phrase Match Boost
+        if query.lower() in (name.lower() + " " + content.lower()):
+            filename_boost += 0.2
         
         final_score = (sem_score * 0.7) + (key_score * 0.3) + filename_boost
-        results.append((final_score, name, row["path"]))
+        
+        results.append({
+            "score": final_score,
+            "name": name,
+            "path": row["path"],
+            "created_time": row["created_time"],
+            "file_type": row["file_type"]
+        })
 
     # Sort descending (Highest score first, or Newest first if no query)
-    results.sort(key=lambda x: x[0], reverse=True)
+    # The key needs to handle both scenarios safely
+    if query:
+        results.sort(key=lambda x: x["score"], reverse=True)
+    else:
+        results.sort(key=lambda x: x["created_time"], reverse=True)
     
-    # Return formatted results without the score
-    print(results[:top_k])
+    # Return formatted results
     return results[:top_k]

@@ -33,9 +33,9 @@ def handle_action(intent):
             return
 
         print("\nTop matches:\n")
-        for score, name, path in results:
-            print(f"{name} | {score:.3f}")
-            print(path)
+        for res in results:
+            print(f"{res['name']} | {res['score']:.3f}")
+            print(res['path'])
             print("-" * 40)
 
     # ---------------- MOVE (SMART) ----------------
