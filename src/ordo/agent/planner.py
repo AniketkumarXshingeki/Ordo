@@ -31,7 +31,9 @@ def choose_best_result(results):
     if not results:
         return None
 
-    score, name, path = results[0]
+    best = results[0]
+    score = best.get("score", 0.0)
+    path = best.get("path")
 
     # confidence threshold
     if score < 0.35:

@@ -15,20 +15,55 @@ Supported actions:
 - delete
 - create_folder
 
-For "search" actions, extract these filters if the user mentions them:
-
--- category: The type of file requested must be one of ("document", "image", "audio", "video", "presentation"). It strictly must be one of these values or Leave null if not mentioned or mentioned any other value.
-- days_ago: An integer representing how far back to look (e.g., "yesterday" = 1, "last week" = 7, "last month" = 30). Leave null if not mentioned.
+For "search" actions, use the following format:
 
 JSON format:
 {
-  "action": "...",
+  "action": "search",
   "query": "...",
-  "category": "...",
-  "days_ago": "...",
-  "source": "...",
-  "destination": "...",
-  "new_name": "..."
+  "category": "...", The type of file requested must be one of ("document", "image", "audio", "video", "presentation"). It strictly must be one of these values or Leave null if not mentioned or mentioned any other value.
+}
+
+For "move" actions, use the following format:
+
+JSON format:
+{
+  "action": "move",
+  "source": "...", (given source path)
+  "destination": "...", (given destination path)
+}
+
+For "rename" actions, use the following format:
+
+JSON format:
+{
+  "action": "rename",
+  "source": "...", (given source path)
+  "new_name": "...", (given new name)
+}
+
+For "delete" actions, use the following format:
+
+JSON format:
+{
+  "action": "delete",
+  "source": "..." (given source path)
+}
+
+For "create_folder" actions, use the following format:
+
+JSON format:
+{
+  "action": "create_folder",
+  "destination": "...", (given destination path)
+}
+For "organize" actions, use the following format:
+
+JSON format:
+{
+  "action": "organize",
+  "source": "...". (given source path)
+  "destination": "...", (given destination path)
 }
 """
 

@@ -2,6 +2,7 @@ import sqlite3
 import pickle
 import numpy as np
 import re
+import difflib
 from ordo.indexer.embedder import create_embedding
 from ordo.indexer.vector_index import search_index
 
@@ -24,14 +25,24 @@ def cosine_similarity(a, b):
 # ------------------------------
 # Keyword score
 # ------------------------------
+STOP_WORDS = {"the", "is", "at", "which", "on", "in", "a", "an", "and", "of", "to"}
+
 def keyword_score(query_words, text):
-    if not text:
+    if not text or not query_words:
         return 0.0
 
-    text = text.lower()
-    matches = sum(1 for w in query_words if w in text)
-
-    return matches / max(len(query_words), 1)
+    text_words = set(re.findall(r"\w+", text.lower()))
+    
+    matches = 0
+    filtered_qw = [w for w in query_words if w not in STOP_WORDS]
+    
+    for w in filtered_qw:
+        if any(t.startswith(w) for t in text_words):
+            matches += 1
+        elif difflib.get_close_matches(w, text_words, n=1, cutoff=0.8):
+            matches += 1
+            
+    return matches / max(len(filtered_qw), 1)
 
 
 # ------------------------------
@@ -80,19 +91,30 @@ def hybrid_search(query, top_k=5):
 
     for faiss_score, rowid in candidates:
         cur.execute("""
-        SELECT name, path, file_type, content, embedding
+        SELECT name, path, file_type, content, embedding, created_time
         FROM files WHERE rowid=?
         """, (rowid,))
         row = cur.fetchone()
         if not row:
             continue
 
-        name, path, file_type, content, emb_blob = row
+        name, path, file_type, content, emb_blob, created_time = row
         file_vec = pickle.loads(emb_blob)
 
         sem_score = cosine_similarity(query_vec, file_vec)
         key_score = keyword_score(query_words, name + " " + (content or ""))
-        filename_boost = 0.15 if any(w in name.lower() for w in query_words) else 0.0
+        
+        filtered_query_words = [w for w in query_words if w not in STOP_WORDS]
+        name_words = set(re.findall(r"\w+", name.lower()))
+        filename_boost = 0.0
+        for w in filtered_query_words:
+            if any(t.startswith(w) for t in name_words) or difflib.get_close_matches(w, name_words, n=1, cutoff=0.8):
+                filename_boost = 0.15
+                break
+                
+        if query.lower() in (name.lower() + " " + (content or "").lower()):
+            filename_boost += 0.2
+            
         type_boost = 0.1 if preferred_type and file_type == preferred_type else 0.0
 
         final_score = (
@@ -102,9 +124,15 @@ def hybrid_search(query, top_k=5):
             type_boost
         )
 
-        results.append((final_score, name, path))
+        results.append({
+            "score": final_score,
+            "name": name,
+            "path": path,
+            "file_type": file_type,
+            "created_time": created_time
+        })
 
     conn.close()
 
-    results.sort(reverse=True)
+    results.sort(key=lambda x: x["score"], reverse=True)
     return results[:top_k]
