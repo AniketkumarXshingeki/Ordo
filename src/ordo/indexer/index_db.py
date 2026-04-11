@@ -8,6 +8,7 @@ DB_PATH = "data/index.db"
 def init_db():
     """
     Create database and table if not exists.
+    Initializes both main index and pinboard databases.
     """
     Path("data").mkdir(exist_ok=True)
 
@@ -42,6 +43,13 @@ def init_db():
 
     conn.commit()
     conn.close()
+    
+    # Initialize pinboard database
+    try:
+        from ordo.tools.pinboard import init_pinboard_db
+        init_pinboard_db()
+    except Exception as e:
+        print(f"Note: Pinboard initialization skipped ({e})")
 
 def get_or_create_folder(path: str):
     conn = sqlite3.connect(DB_PATH)

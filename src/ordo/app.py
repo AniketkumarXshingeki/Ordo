@@ -7,6 +7,8 @@ from ordo.indexer import content_pipeline
 from ordo.indexer import vector_index
 from ordo.tools.time_search import *
 from ordo.tools.organize_tools import organize_by_type
+from ordo.tools.pinboard import init_pinboard_db
+from ordo.tools import pinFile
 # This creates your main CLI app
 app = typer.Typer(help="🤖 Ordo: AI-Driven File Manager", add_completion=False)
 
@@ -140,6 +142,129 @@ def run():
     
     # This triggers your 'while True' loop from core.py!
     run_agent()
+
+
+# ============================================================
+# PINBOARD (Quick Access) COMMANDS
+# ============================================================
+
+@app.command()
+def pin(file_path: str = typer.Argument(..., help="Path to the file to pin"),
+        category: str = typer.Option("General", "--category", "-c", help="Category for the pinned file")):
+    """
+    Pin a file for quick access. Pinned files appear in the pinboard for faster access.
+    """
+    # Initialize pinboard database on first use
+    init_pinboard_db()
+    
+    from ordo.tools.pinboard import pin_file
+    pin_file(file_path, category)
+
+
+@app.command()
+def unpin(file_path: str = typer.Argument(..., help="Path to the file to unpin")):
+    """
+    Unpin a file from quick access.
+    """
+    from ordo.tools.pinboard import unpin_file
+    unpin_file(file_path)
+
+@app.command()
+def pinboard_stats():
+    """
+    Display pinboard statistics: total files pinned, by category, most accessed, etc.
+    """
+    init_pinboard_db()
+    pinFile.view_pinned_stats()
+
+
+@app.command()
+def pinboard_suggest():
+    """
+    Get AI-powered suggestions for files that should be pinned based on access frequency.
+    """
+    init_pinboard_db()
+    pinFile.view_suggestions()
+
+
+@app.command()
+def pinboard_categories():
+    """
+    View all available pin categories.
+    """
+    init_pinboard_db()
+    pinFile.view_categories()
+
+
+@app.command()
+def add_category(name: str = typer.Argument(..., help="Category name"),
+                color: str = typer.Option("#3498db", "--color", help="Hex color code for the category")):
+    """
+    Create a new category for organizing pinned files.
+    
+    Examples:
+      ordo add-category "Projects"
+      ordo add-category "Work" --color "#ff0000"
+    """
+    init_pinboard_db()
+    from ordo.tools.pinboard import add_category as add_cat
+    add_cat(name, color)
+
+
+@app.command()
+def move_to_category(file_path: str = typer.Argument(..., help="Path to the pinned file"),
+                    category: str = typer.Argument(..., help="Target category")):
+    """
+    Move a pinned file to a different category.
+    
+    Example:
+      ordo move-to-category "/path/file.txt" "Work"
+    """
+    init_pinboard_db()
+    from ordo.tools.pinboard import update_pin_category
+    update_pin_category(file_path, category)
+
+
+@app.command()
+def pin_natural(query: str = typer.Argument(..., help="Natural language query")):
+    """
+    Pin a file using natural language instead of exact path.
+    
+    Examples:
+      ordo pin-natural "my project file"
+      ordo pin-natural "project"
+      ordo pin-natural "budget spreadsheet"
+    """
+    init_pinboard_db()
+    from ordo.tools.pinboard import natural_language_pin
+    natural_language_pin(query)
+
+
+@app.command()
+def open_pinboard():
+    """
+    Open interactive pinboard menu.
+    Browse and select pinned files to open with one click.
+    
+    Just enter the number of the file you want to open!
+    """
+    init_pinboard_db()
+    pinFile.open_interactive_pinboard()
+
+
+@app.command()
+def open_category(category: str = typer.Argument(..., help="Category name")):
+    """
+    Open interactive pinboard for a specific category.
+    See all files in that category and select one to open.
+    
+    Example:
+      ordo open-category "Work"
+      ordo open-category "Study"
+    """
+    init_pinboard_db()
+    pinFile.open_interactive_category(category)
+
 
 def main():
     # This is what Poetry triggers when you type 'ordo'
