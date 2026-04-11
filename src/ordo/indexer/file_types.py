@@ -24,7 +24,7 @@ def classify_file_type(extension: str) -> str:
     if ext in [".pdf", ".docx", ".txt", ".md", ".rtf"]:
         return "document"
 
-    elif ext in [".jpg", ".jpeg", ".png", ".bmp", ".webp", ".gif"]:
+    elif ext in [".jpg", ".jpeg", ".png", ".bmp", ".webp", ".gif",".heic"]:
         return "image"
 
     elif ext in [".mp3", ".wav", ".flac", ".m4a", ".aac"]:

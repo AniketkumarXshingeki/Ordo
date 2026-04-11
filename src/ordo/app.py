@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Optional
 
 import typer
@@ -9,6 +10,27 @@ from ordo.tools.time_search import *
 from ordo.tools.organize_tools import organize_by_type
 from ordo.tools.pinboard import init_pinboard_db
 from ordo.tools import pinFile
+
+LAST_SCAN_PATH_FILE = Path("data") / "last_scan_path.txt"
+
+
+def save_last_scan_path(path: str) -> None:
+    Path("data").mkdir(exist_ok=True)
+    try:
+        LAST_SCAN_PATH_FILE.write_text(str(Path(path).resolve()), encoding="utf-8")
+    except Exception as e:
+        print(f"⚠️ Could not save scan path: {e}")
+
+
+def get_last_scan_path() -> Optional[str]:
+    if not LAST_SCAN_PATH_FILE.exists():
+        return None
+    try:
+        path = LAST_SCAN_PATH_FILE.read_text(encoding="utf-8").strip()
+        return path if path else None
+    except Exception as e:
+        print(f"⚠️ Could not read saved scan path: {e}")
+        return None
 # This creates your main CLI app
 app = typer.Typer(help="🤖 Ordo: AI-Driven File Manager", add_completion=False)
 
@@ -22,6 +44,7 @@ def scan(path: Optional[str] = typer.Argument(".", help="Specific Folder to Scan
     if path:
         print(f"🔍 Ordo is targeting specific path: '{path}'")
         content_pipeline.scan_with_path(path)
+        save_last_scan_path(path)
     # else:
     #     print("🌍 No path provided. Scanning all ALLOWED_ROOTS...")
     #     content_pipeline.run()
@@ -29,10 +52,22 @@ def scan(path: Optional[str] = typer.Argument(".", help="Specific Folder to Scan
         vector_index.run_deep_scan()
     
 @app.command()
-def organize(folder: str = typer.Argument(..., help="The target folder to clean up")):
+def organize(folder: Optional[str] = typer.Argument(None, help="The target folder to clean up. If omitted, uses the last scanned path.")):
     """
     Use AI to sort files into categorized folders.
+    If no path is provided, organizes the most recently scanned directory.
     """
+    if folder is None:
+        folder = get_last_scan_path()
+        if not folder:
+            typer.echo("❌ No scanned path available. Run `ordo scan <path>` first or provide a folder.")
+            raise typer.Exit(code=1)
+        typer.echo(f"📂 No folder provided; using last scanned path: {folder}")
+
+    if not Path(folder).exists():
+        typer.echo(f"❌ Target folder does not exist: {folder}")
+        raise typer.Exit(code=1)
+
     print(f"📂 Preparing to organize files in '{folder}'...")
     organize_by_type(folder)
 
@@ -149,7 +184,7 @@ def run():
 # ============================================================
 
 @app.command()
-def pin(file_path: str = typer.Argument(..., help="Path to the file to pin"),
+def pin(file_path: str = typer.Argument(..., help="Path or filename of the file to pin"),
         category: str = typer.Option("General", "--category", "-c", help="Category for the pinned file")):
     """
     Pin a file for quick access. Pinned files appear in the pinboard for faster access.
@@ -162,20 +197,20 @@ def pin(file_path: str = typer.Argument(..., help="Path to the file to pin"),
 
 
 @app.command()
-def unpin(file_path: str = typer.Argument(..., help="Path to the file to unpin")):
+def unpin(file_path: str = typer.Argument(..., help="Path or filename of the file to unpin")):
     """
     Unpin a file from quick access.
     """
     from ordo.tools.pinboard import unpin_file
     unpin_file(file_path)
 
-@app.command()
-def pinboard_stats():
-    """
-    Display pinboard statistics: total files pinned, by category, most accessed, etc.
-    """
-    init_pinboard_db()
-    pinFile.view_pinned_stats()
+# @app.command()
+# def pinboard_stats():
+#     """
+#     Display pinboard statistics: total files pinned, by category, most accessed, etc.
+#     """
+#     init_pinboard_db()
+#     pinFile.view_pinned_stats()
 
 
 @app.command()

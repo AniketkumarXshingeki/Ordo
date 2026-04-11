@@ -77,6 +77,59 @@ def init_pinboard_db():
     conn.close()
 
 
+def resolve_file_path(file_path: str) -> Path | None:
+    """Resolve a file path or filename from the indexed database."""
+    candidate = Path(file_path)
+
+    if candidate.exists():
+        return candidate
+
+    # Search indexed files by exact filename when no path exists
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("SELECT path FROM files WHERE name = ?", (candidate.name,))
+    rows = cur.fetchall()
+    conn.close()
+
+    if not rows:
+        print(f"❌ File not found or not indexed: {file_path}")
+        return None
+
+    if len(rows) == 1:
+        return Path(rows[0][0])
+
+    print(f"❌ Multiple files found with name '{candidate.name}'. Please specify the full path.")
+    for row in rows:
+        print(f"  - {row[0]}")
+    return None
+
+
+def guess_file_type(file_path: Path) -> str:
+    """Map common file extensions to simple pinboard file types."""
+    ext = file_path.suffix.lower()
+    if ext in {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".svg"}:
+        return "Images"
+    if ext in {".mp4", ".mov", ".mkv", ".avi", ".webm"}:
+        return "Videos"
+    if ext in {".mp3", ".wav", ".ogg", ".flac"}:
+        return "Audio"
+    if ext in {".zip", ".tar", ".gz", ".rar", ".7z"}:
+        return "Archives"
+    if ext in {".py", ".js", ".ts", ".java", ".c", ".cpp", ".cs", ".go", ".rb", ".sh"}:
+        return "Code"
+    if ext in {".csv", ".xlsx", ".xls"}:
+        return "Spreadsheets"
+    if ext in {".ppt", ".pptx"}:
+        return "Presentations"
+    if ext == ".pdf":
+        return "PDFs"
+    if ext in {".txt", ".md", ".rtf"}:
+        return "Text"
+    if file_path.is_dir():
+        return "Folders"
+    return "Documents"
+
+
 def pin_file(file_path: str, category: str = "General") -> bool:
     """
     Pin a file for quick access.
@@ -88,13 +141,15 @@ def pin_file(file_path: str, category: str = "General") -> bool:
     Returns:
         True if successful, False otherwise
     """
-    if not is_safe_path(Path(file_path)):
+    resolved_path = resolve_file_path(file_path)
+    if not resolved_path:
+        return False
+
+    if not is_safe_path(resolved_path):
         print("❌ Unsafe path: Cannot pin this file")
         return False
 
-    if not Path(file_path).exists():
-        print(f"❌ File not found: {file_path}")
-        return False
+    file_path = str(resolved_path)
 
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
@@ -107,12 +162,13 @@ def pin_file(file_path: str, category: str = "General") -> bool:
         )
         file_row = cur.fetchone()
 
-        if not file_row:
-            print(f"❌ File not indexed: {file_path}")
-            conn.close()
-            return False
-
-        file_id, file_name, file_type = file_row
+        if file_row:
+            file_id, file_name, file_type = file_row
+        else:
+            file_id = None
+            file_name = Path(file_path).name
+            file_type = guess_file_type(Path(file_path))
+            print(f"⚠️ File not indexed: storing pin metadata directly for {file_name}")
 
         # Get the highest pin_order
         cur.execute("SELECT MAX(pin_order) FROM pinboard WHERE is_pinned = 1")
@@ -150,6 +206,11 @@ def unpin_file(file_path: str) -> bool:
     Returns:
         True if successful, False otherwise
     """
+    resolved_path = resolve_file_path(file_path)
+    if not resolved_path:
+        return False
+
+    file_path = str(resolved_path)
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
 
