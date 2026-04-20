@@ -9,7 +9,8 @@ from ordo.tools.pinboard import (
     get_pinned_by_category, update_pin_category,
     record_pin_access, get_statistics, suggest_files_to_pin,
     natural_language_pin, init_pinboard_db, get_categories, add_category,
-    interactive_pinboard, interactive_category_pinboard, open_file_default
+    interactive_pinboard, interactive_category_pinboard, open_file_default,
+    gui_pinboard, gui_category_pinboard
 )
 from ordo.tools.pinboard_ui import (
     display_pinned_list, display_pinned_grid, display_by_category,
@@ -74,10 +75,10 @@ def view_categories() -> None:
 
 
 def open_interactive_pinboard() -> None:
-    """Open interactive pinboard to select and open files."""
-    interactive_pinboard()
+    """Open GUI pinboard to select and open files."""
+    gui_pinboard()
 
 
 def open_interactive_category(category: str) -> None:
-    """Open interactive category to select and open files."""
-    interactive_category_pinboard(category)
+    """Open GUI pinboard for a specific category."""
+    gui_category_pinboard(category)

@@ -1,8 +1,7 @@
 from pathlib import Path
-from typing import Optional
-
+from typing import Optional, List, Tuple
+from datetime import datetime
 import typer
-
 from ordo.agent.agent_loop import run_agent
 from ordo.indexer import content_pipeline
 from ordo.indexer import vector_index
@@ -10,6 +9,7 @@ from ordo.tools.time_search import *
 from ordo.tools.organize_tools import organize_by_type
 from ordo.tools.pinboard import init_pinboard_db
 from ordo.tools import pinFile
+from ordo.tools.pinboard import open_file_default
 
 LAST_SCAN_PATH_FILE = Path("data") / "last_scan_path.txt"
 
@@ -31,6 +31,59 @@ def get_last_scan_path() -> Optional[str]:
     except Exception as e:
         print(f"⚠️ Could not read saved scan path: {e}")
         return None
+
+
+def interactive_search_results(results: List[Tuple]) -> None:
+    """
+    Display search results with numbers and allow user to select and open a file.
+    
+    Args:
+        results: List of tuples (name, path, datetime)
+    """
+    if not results:
+        print("📌 No files to display.")
+        return
+    
+    print("\n" + "=" * 120)
+    print("📂 SEARCH RESULTS - SELECT A FILE TO OPEN")
+    print("=" * 120 + "\n")
+    
+    # Display files with numbers
+    for idx, (name, path, dt) in enumerate(results, 1):
+        print(f"  {idx:2}. 📄 {name}")
+        print(f"      📍 {path}")
+        print(f"      📅 Created: {dt.strftime('%Y-%m-%d %H:%M:%S')}\n")
+    
+    print("-" * 120)
+    print(f"Total: {len(results)} file(s)")
+    print("\nEnter the file number to open (or 'q' to quit): ", end="")
+    
+    try:
+        user_input = input().strip().lower()
+        
+        if user_input == 'q' or user_input == 'quit':
+            print("👋 Goodbye!")
+            return
+        
+        try:
+            file_num = int(user_input)
+            if 1 <= file_num <= len(results):
+                selected_file = results[file_num - 1]
+                file_path = selected_file[1]
+                file_name = selected_file[0]
+                
+                print(f"\n🔓 Opening: {file_name}...")
+                open_file_default(file_path)
+            else:
+                print(f"❌ Invalid number. Please enter a number between 1 and {len(results)}")
+        except ValueError:
+            print("❌ Invalid input. Please enter a number.")
+    
+    except KeyboardInterrupt:
+        print("\n\n👋 Search closed.")
+    except Exception as e:
+        print(f"❌ Error: {e}")
+
 # This creates your main CLI app
 app = typer.Typer(help="🤖 Ordo: AI-Driven File Manager", add_completion=False)
 
@@ -83,6 +136,7 @@ def search(
     """
     Search for files by creation time: day, month, year, or date range.
     Provide either specific day/month/year or a start/end date range.
+    Then select a file number to open it in the CLI.
     """
     if start_date and end_date:
         try:
@@ -113,8 +167,8 @@ def search(
         return
 
     typer.echo(f"🔍 Found {len(results)} file(s):")
-    for name, path, dt in results:
-        typer.echo(f"  - {name} | {path} | Created: {dt.strftime('%Y-%m-%d %H:%M:%S')}")
+    # Use interactive selection instead of just listing
+    interactive_search_results(results)
 # Add this import at the top with other imports
 from ordo.tools.file_tools import create_folder, move_file, rename_file, delete_file
 
@@ -246,18 +300,18 @@ def add_category(name: str = typer.Argument(..., help="Category name"),
     add_cat(name, color)
 
 
-@app.command()
-def move_to_category(file_path: str = typer.Argument(..., help="Path to the pinned file"),
-                    category: str = typer.Argument(..., help="Target category")):
-    """
-    Move a pinned file to a different category.
+# @app.command()
+# def move_to_category(file_path: str = typer.Argument(..., help="Path to the pinned file"),
+#                     category: str = typer.Argument(..., help="Target category")):
+#     """
+#     Move a pinned file to a different category.
     
-    Example:
-      ordo move-to-category "/path/file.txt" "Work"
-    """
-    init_pinboard_db()
-    from ordo.tools.pinboard import update_pin_category
-    update_pin_category(file_path, category)
+#     Example:
+#       ordo move-to-category "/path/file.txt" "Work"
+#     """
+#     init_pinboard_db()
+#     from ordo.tools.pinboard import update_pin_category
+#     update_pin_category(file_path, category)
 
 
 @app.command()
@@ -278,10 +332,8 @@ def pin_natural(query: str = typer.Argument(..., help="Natural language query"))
 @app.command()
 def open_pinboard():
     """
-    Open interactive pinboard menu.
-    Browse and select pinned files to open with one click.
-    
-    Just enter the number of the file you want to open!
+    Open GUI pinboard to view and open pinned files.
+    Shows all pinned files in a graphical window where you can click to open them.
     """
     init_pinboard_db()
     pinFile.open_interactive_pinboard()
@@ -290,8 +342,8 @@ def open_pinboard():
 @app.command()
 def open_category(category: str = typer.Argument(..., help="Category name")):
     """
-    Open interactive pinboard for a specific category.
-    See all files in that category and select one to open.
+    Open GUI pinboard for a specific category.
+    Shows all files in that category in a graphical window where you can click to open them.
     
     Example:
       ordo open-category "Work"

@@ -2,8 +2,10 @@ import sqlite3
 import pickle
 import numpy as np
 from datetime import datetime
+from pathlib import Path
 
-conn = sqlite3.connect("data/index.db")
+DB_PATH = Path(__file__).resolve().parent / "index.db"
+conn = sqlite3.connect(DB_PATH)
 cur = conn.cursor()
 
 # Display files table
