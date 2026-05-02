@@ -4,9 +4,9 @@ import numpy as np
 import faiss
 import os
 from pathlib import Path
-from ordo.indexer.embedder import create_embedding
+from ordo.indexer.embedder import create_embedding, create_embeddings
 from ordo.indexer.text_extractor import extract_content
-from ordo.indexer.index_db import get_unembedded_files, update_file_embedding
+from ordo.indexer.index_db import get_unembedded_files, update_file_embedding, update_file_embeddings
 
 # 1. FIX THE PATHS: Anchor them to the root of your project
 BASE_DIR = Path(__file__).parent.parent.parent.parent
@@ -22,49 +22,56 @@ _ID_MAP = None
 # Build FAISS index from DB
 # ---------------------------
 def build_index():
-    # Convert Path objects to strings for sqlite and faiss
     conn = sqlite3.connect(str(DB_PATH))
     cur = conn.cursor()
 
     cur.execute("SELECT rowid, embedding FROM files WHERE embedding IS NOT NULL")
-    rows = cur.fetchall()
+
+    index = None
+    id_map = []
+    vector_count = 0
+
+    while True:
+        rows = cur.fetchmany(500)
+        if not rows:
+            break
+
+        batch_vectors = []
+        for rowid, emb_blob in rows:
+            vec = pickle.loads(emb_blob)
+            norm = np.linalg.norm(vec)
+            if norm > 0:
+                vec = vec / norm
+            batch_vectors.append(vec.astype("float32"))
+            id_map.append(rowid)
+
+        if not batch_vectors:
+            continue
+
+        batch_array = np.vstack(batch_vectors)
+        if index is None:
+            dim = batch_array.shape[1]
+            index = faiss.IndexFlatIP(dim)
+
+        index.add(batch_array)
+        vector_count += batch_array.shape[0]
+
     conn.close()
 
-    if not rows:
+    if index is None or vector_count == 0:
         print("No embeddings found.")
         return
-
-    vectors = []
-    id_map = []
-
-    for rowid, emb_blob in rows:
-        vec = pickle.loads(emb_blob)
-        
-        # Safety check: avoid dividing by zero if an embedding is empty!
-        norm = np.linalg.norm(vec)
-        if norm > 0:
-            vec = vec / norm  
-            
-        vectors.append(vec.astype("float32"))
-        id_map.append(rowid)
-
-    vectors = np.array(vectors)
-    dim = vectors.shape[1]
-    
-    index = faiss.IndexFlatIP(dim)
-    index.add(vectors)
 
     faiss.write_index(index, str(INDEX_PATH))
 
     with open(IDMAP_PATH, "wb") as f:
         pickle.dump(id_map, f)
 
-    # Force the search cache to reset now that we've built a new index
     global _INDEX, _ID_MAP
     _INDEX = None
     _ID_MAP = None
 
-    print(f"✅ FAISS index built with {len(vectors)} vectors.")
+    print(f"✅ FAISS index built with {vector_count} vectors.")
 
 
 # ---------------------------
@@ -113,24 +120,40 @@ def run_deep_scan():
         return
 
     total = 0
+    batch = []
     for file_record in files_to_process:
-        file_path = file_record["path"]
         file_type = file_record["file_type"]
-        
-        # Heavy AI lifting happens here!
-        # content = extract_content(file_path, file_type)
-        content=''
-        text_for_embedding = f"File name: {os.name}, File type: {file_type}"        
-        embedding = create_embedding(text_for_embedding)
-        
-        # Save it back to SQLite
-        update_file_embedding(file_record["id"], content, embedding)
-        total += 1
-        
-        if total % 20 == 0:
+        file_name = Path(file_record["path"]).stem
+        text_for_embedding = f"File name: {file_name}, File type: {file_type}"
+
+        batch.append({
+            "id": file_record["id"],
+            "content": "",
+            "text": text_for_embedding,
+        })
+
+        if len(batch) >= 50:
+            texts = [item["text"] for item in batch]
+            embeddings = create_embeddings(texts)
+            updates = [
+                {"id": item["id"], "content": item["content"], "embedding": embedding}
+                for item, embedding in zip(batch, embeddings)
+            ]
+            update_file_embeddings(updates)
+            total += len(batch)
             print(f"Deep scanned {total} files...")
-            
+            batch.clear()
+
+    if batch:
+        texts = [item["text"] for item in batch]
+        embeddings = create_embeddings(texts)
+        updates = [
+            {"id": item["id"], "content": item["content"], "embedding": embedding}
+            for item, embedding in zip(batch, embeddings)
+        ]
+        update_file_embeddings(updates)
+        total += len(batch)
+
     print("\n✅ Deep scan text extraction complete!")
     
-    # Automatically build the index when finished!
     build_index()

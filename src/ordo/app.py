@@ -105,7 +105,10 @@ def scan(path: Optional[str] = typer.Argument(".", help="Specific Folder to Scan
         vector_index.run_deep_scan()
     
 @app.command()
-def organize(folder: Optional[str] = typer.Argument(None, help="The target folder to clean up. If omitted, uses the last scanned path.")):
+def organize(
+    folder: Optional[str] = typer.Argument(None, help="The target folder to clean up. If omitted, uses the last scanned path."),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Preview the organization plan without moving files."),
+):
     """
     Use AI to sort files into categorized folders.
     If no path is provided, organizes the most recently scanned directory.
@@ -121,8 +124,8 @@ def organize(folder: Optional[str] = typer.Argument(None, help="The target folde
         typer.echo(f"❌ Target folder does not exist: {folder}")
         raise typer.Exit(code=1)
 
-    print(f"📂 Preparing to organize files in '{folder}'...")
-    organize_by_type(folder)
+    print(f"📂 Preparing to organize files in '{folder}' (dry run={dry_run})...")
+    organize_by_type(folder, dry_run=dry_run)
 
 # Add this new command for time-based searching
 @app.command()

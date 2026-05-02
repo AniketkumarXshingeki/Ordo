@@ -3,6 +3,7 @@ from ordo.agent.intent_parser import parse_intent
 from ordo.tools.search_file import hybrid_search
 from ordo.tools.file_tools import move_file, rename_file, delete_file, create_folder
 from ordo.tools.organize_tools import organize_by_type
+from ordo.tools.pinboard import open_file_default
 from ordo.agent.planner import validate_intent, resolve_move_intent
 
 
@@ -33,10 +34,25 @@ def handle_action(intent):
             return
 
         print("\nTop matches:\n")
-        for res in results:
-            print(f"{res['name']} | {res['score']:.3f}")
-            print(res['path'])
+        for idx, res in enumerate(results, start=1):
+            print(f"{idx}. {res['name']}")
+            print(f"   {res['path']}")
             print("-" * 40)
+
+        try:
+            selection = input("Enter the number of the file to open, or press Enter to skip: ").strip()
+            if selection:
+                index = int(selection)
+                if 1 <= index <= len(results):
+                    chosen = results[index - 1]
+                    print(f"\n🔓 Opening: {chosen['name']}\n")
+                    open_file_default(chosen['path'])
+                else:
+                    print("❌ Invalid number. No file opened.")
+        except ValueError:
+            print("❌ Invalid input. Please enter a valid number.")
+        except Exception as e:
+            print(f"❌ Could not open file: {e}")
 
     # ---------------- MOVE (SMART) ----------------
     elif action == "move":

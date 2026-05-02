@@ -5,11 +5,9 @@
 from ordo.safety.path_guard import ALLOWED_ROOTS
 from ordo.indexer.scanner import scan_files
 from ordo.indexer.metadata_extractor import extract_basic_metadata
-from ordo.indexer.index_db import init_db, upsert_file
+from ordo.indexer.index_db import init_db, upsert_files
 from ordo.indexer import vector_index
 
-from ordo.safety.path_guard import ALLOWED_ROOTS
-from ordo.indexer import vector_index
 # 1. FIX THE CONFIG PATH: Anchor it to the project root
 # BASE_DIR = Path(__file__).parent.parent.parent.parent
 # CONFIG_PATH = BASE_DIR / "config" / "settings.json"
@@ -26,6 +24,7 @@ def run():
     init_db()
 
     total = 0
+    batch = []
     for root in ALLOWED_ROOTS:
         print(f"\n⚡ Fast Scanning: {root}")
 
@@ -34,15 +33,20 @@ def run():
             if not meta:
                 continue
 
-            # NO heavy AI math here! Just set to None.
             meta["content"] = None
             meta["embedding"] = None
-
-            upsert_file(meta)
+            batch.append(meta)
             total += 1
+
+            if len(batch) >= 200:
+                upsert_files(batch)
+                batch.clear()
 
             if total % 100 == 0:
                 print(f"Processed {total} files...")
+
+    if batch:
+        upsert_files(batch)
 
     print(f"\n✅ Fast scan complete: Mapped {total} files.")
 
@@ -60,6 +64,7 @@ def scan_with_path(path):
     print(f"\n⚡ Fast Scanning: {path}")
     
     total = 0
+    batch = []
 
     for file in scan_files(path, allow_outside=True):
         meta = extract_basic_metadata(file)
@@ -68,12 +73,18 @@ def scan_with_path(path):
 
         meta["content"] = None
         meta["embedding"] = None
-
-        upsert_file(meta)
+        batch.append(meta)
         total += 1
-        
+
+        if len(batch) >= 200:
+            upsert_files(batch)
+            batch.clear()
+
         if total % 10 == 0:
             print(f"Processed {total} files...")
+
+    if batch:
+        upsert_files(batch)
 
     print(f"✅ Finished fast scanning '{path}' with {total} files mapped.")
     print("\n✅ Fast scan complete. Run deep scan separately if you want embeddings and content extraction.")

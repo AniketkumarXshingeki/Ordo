@@ -41,6 +41,12 @@ def init_db():
     )
     """)
 
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_files_created_time ON files(created_time)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_files_file_type ON files(file_type)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_files_extension ON files(extension)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_files_path ON files(path)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_files_folder_id ON files(folder_id)")
+
     conn.commit()
     conn.close()
     
@@ -51,9 +57,14 @@ def init_db():
     except Exception as e:
         print(f"Note: Pinboard initialization skipped ({e})")
 
-def get_or_create_folder(path: str):
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
+def get_or_create_folder(path: str, conn=None, cur=None):
+    own_connection = False
+    if conn is None:
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
+        own_connection = True
+    elif cur is None:
+        cur = conn.cursor()
 
     folder_path = str(Path(path).parent)
     folder_name = Path(folder_path).name
@@ -69,53 +80,77 @@ def get_or_create_folder(path: str):
         INSERT INTO folders (path, name, parent_path)
         VALUES (?, ?, ?)
         """, (folder_path, folder_name, parent_path))
-
         folder_id = cur.lastrowid
-        conn.commit()
+        if own_connection:
+            conn.commit()
 
-    conn.close()
+    if own_connection:
+        conn.close()
     return folder_id
+
 
 def upsert_file(meta: dict):
     """
-    Insert or update file metadata.
+    Insert or update a single file metadata record.
     """
+    upsert_files([meta])
+
+
+def upsert_files(metas: list[dict], batch_size: int = 200):
+    """
+    Insert or update file metadata in batches for faster SQLite performance.
+    """
+    if not metas:
+        return
+
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
 
-    embedding_blob = None
-    if meta.get("embedding") is not None:
-        embedding_blob = pickle.dumps(meta["embedding"])
+    try:
+        conn.execute("BEGIN")
+        for i in range(0, len(metas), batch_size):
+            batch = metas[i:i + batch_size]
+            params = []
+            for meta in batch:
+                embedding_blob = None
+                if meta.get("embedding") is not None:
+                    embedding_blob = pickle.dumps(meta["embedding"])
 
-    folder_id = get_or_create_folder(meta["path"])
+                folder_id = get_or_create_folder(meta["path"], conn=conn, cur=cur)
+                params.append(
+                    (
+                        meta["path"],
+                        meta["name"],
+                        meta["extension"],
+                        meta["file_type"],
+                        meta["size_bytes"],
+                        meta["created_time"],
+                        meta["modified_time"],
+                        meta.get("content", ""),
+                        embedding_blob,
+                        folder_id,
+                    )
+                )
 
-    cur.execute("""
-    INSERT INTO files (path, name, extension, file_type, size_bytes, created_time, modified_time, content, embedding, folder_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(path) DO UPDATE SET
-        name=excluded.name,
-        extension=excluded.extension,
-        file_type=excluded.file_type,
-        size_bytes=excluded.size_bytes,
-        created_time=excluded.created_time,
-        modified_time=excluded.modified_time,
-        content=excluded.content,
-        embedding=excluded.embedding
-    """, (
-        meta["path"],
-        meta["name"],
-        meta["extension"],
-        meta["file_type"],
-        meta["size_bytes"],
-        meta["created_time"],
-        meta["modified_time"],
-        meta.get("content", ""),
-        embedding_blob,
-        folder_id
-    ))
-
-    conn.commit()
-    conn.close()
+            cur.executemany("""
+            INSERT INTO files (path, name, extension, file_type, size_bytes, created_time, modified_time, content, embedding, folder_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(path) DO UPDATE SET
+                name=excluded.name,
+                extension=excluded.extension,
+                file_type=excluded.file_type,
+                size_bytes=excluded.size_bytes,
+                created_time=excluded.created_time,
+                modified_time=excluded.modified_time,
+                content=excluded.content,
+                embedding=excluded.embedding
+            """, params)
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 def fetch_all_files():
@@ -158,4 +193,49 @@ def update_file_embedding(file_id, content, embedding_vector):
     )
     
     conn.commit()
+    conn.close()
+
+
+def update_file_embeddings(file_updates: list[dict], batch_size: int = 100):
+    """
+    Saves content and embeddings for multiple files in a single transaction.
+    """
+    if not file_updates:
+        return
+
+    conn = sqlite3.connect(str(DB_PATH))
+    cur = conn.cursor()
+
+    try:
+        conn.execute("BEGIN")
+        for i in range(0, len(file_updates), batch_size):
+            batch = file_updates[i:i + batch_size]
+            params = []
+            for update in batch:
+                emb_blob = pickle.dumps(update["embedding"])
+                params.append((update["content"], emb_blob, update["id"]))
+            cur.executemany(
+                "UPDATE files SET content = ?, embedding = ? WHERE rowid = ?",
+                params
+            )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def iterate_all_files(batch_size: int = 200):
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("SELECT path, file_type FROM files")
+
+    while True:
+        rows = cur.fetchmany(batch_size)
+        if not rows:
+            break
+        for row in rows:
+            yield row
+
     conn.close()
