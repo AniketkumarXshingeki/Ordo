@@ -200,18 +200,55 @@ def move(
     else:
         typer.echo(f"❌ Failed to move file")
 
+
 @app.command()
 def rename(
-    filepath: str = typer.Argument(..., help="File path to rename"),
+    filepath: str = typer.Argument(..., help="File path or filename to rename"),
     new_name: str = typer.Argument(..., help="New filename")
 ):
     """
     Rename a file.
+    - If you provide a full path: rename that file
+    - If you provide just a filename: rename it in the last scanned directory
+    
+    Examples:
+      ordo rename "/full/path/oldfile.txt" "newfile.txt"
+      ordo rename "oldfile.txt" "newfile.txt"  (uses last scanned path)
     """
-    if rename_file(filepath, new_name):
+   
+    # Check if filepath is just a filename (no path separators)
+    if Path(filepath).parent != Path(filepath):
+        # It's just a filename, not a full path
+        last_path = get_last_scan_path()
+        if not last_path:
+            typer.echo("❌ No last scanned path available. Provide a full file path or run `ordo scan <path>` first.")
+            raise typer.Exit(code=1)
+        
+        # Construct full path: last_scan_path / filename
+        full_filepath = Path(last_path) / filepath
+        print(full_filepath)
+        typer.echo(f"📍 Using last scanned path: {last_path}")
+        typer.echo(f"🔄 Renaming: {filepath} → {new_name}")
+    else:
+        # It's a full path
+        full_filepath = filepath
+        typer.echo(f"🔄 Renaming: {filepath} → {new_name}")
+    
+    if rename_file(str(full_filepath), new_name):
         typer.echo(f"✅ File renamed successfully")
     else:
         typer.echo(f"❌ Failed to rename file")
+# def rename(
+#     filepath: str = typer.Argument(..., help="File path to rename"),
+#     new_name: str = typer.Argument(..., help="New filename")
+# ):
+#     """
+#     Rename a file.
+#     """
+#     if rename_file(filepath, new_name):
+#         typer.echo(f"✅ File renamed successfully")
+#     else:
+#         typer.echo(f"❌ Failed to rename file")
 
 @app.command()
 def delete(
@@ -317,19 +354,19 @@ def add_category(name: str = typer.Argument(..., help="Category name"),
 #     update_pin_category(file_path, category)
 
 
-@app.command()
-def pin_natural(query: str = typer.Argument(..., help="Natural language query")):
-    """
-    Pin a file using natural language instead of exact path.
+# @app.command()
+# def pin_natural(query: str = typer.Argument(..., help="Natural language query")):
+#     """
+#     Pin a file using natural language instead of exact path.
     
-    Examples:
-      ordo pin-natural "my project file"
-      ordo pin-natural "project"
-      ordo pin-natural "budget spreadsheet"
-    """
-    init_pinboard_db()
-    from ordo.tools.pinboard import natural_language_pin
-    natural_language_pin(query)
+#     Examples:
+#       ordo pin-natural "my project file"
+#       ordo pin-natural "project"
+#       ordo pin-natural "budget spreadsheet"
+#     """
+#     init_pinboard_db()
+#     from ordo.tools.pinboard import natural_language_pin
+#     natural_language_pin(query)
 
 
 @app.command()
